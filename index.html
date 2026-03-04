@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculator Ore Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="bg"></div>
+
+  <div class="app">
+    <div class="topbar">
+      <h1>Calculator Ore</h1>
+      <button class="admin-btn" onclick="loginAdmin()">Admin</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Operații</h2>
+
+        <div class="custom-select" id="selectBox">
+          <div id="selectedText">Selectează operație</div>
+          <div class="arrow"></div>
+        </div>
+
+        <div id="dropdown" class="dropdown"></div>
+
+        <div id="infoOperatie" class="info-box"></div>
+
+        <div id="adminPanel" class="admin-panel">
+          <input type="text" id="denumire" placeholder="Denumire operație">
+          <input type="number" id="valoare" placeholder="Valoare fișă (0.080)" step="0.001">
+          <button class="primary" onclick="salveazaOperatieNoua()">Salvează Operație</button>
+        </div>
+
+        <input type="number" id="piese" placeholder="Număr piese" inputmode="numeric">
+        <button class="primary" onclick="adaugaOperatie()">Adaugă în zi</button>
+      </div>
+
+      <div class="card">
+        <h2>Total Zi</h2>
+
+        <div id="rezultatTotal" class="total"></div>
+
+        <ul id="listaOperatii"></ul>
+
+        <div class="progress">
+          <div id="progressBar"></div>
+        </div>
+
+        <!-- ✅ rămâne local -->
+        <button class="danger" onclick="resetZiConfirm()">Reset Zi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Confirmare modernă -->
+  <div id="confirmOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmDesc">
+      <div class="modal-icon" id="confirmIcon" aria-hidden="true">🗑️</div>
+      <div class="modal-text">
+        <div id="confirmTitle" class="modal-title">Confirmare</div>
+        <div id="confirmDesc" class="modal-desc">Ești sigur?</div>
+      </div>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="modal-btn ghost" type="button">Nu</button>
+        <button id="confirmOk" class="modal-btn danger2" type="button">Da</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Dialog parolă Admin -->
+  <div id="passOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="passTitle" aria-describedby="passDesc">
+      <div class="modal-icon" aria-hidden="true">🔒</div>
+
+      <div class="modal-text">
+        <div id="passTitle" class="modal-title">Autentificare Admin</div>
+        <div id="passDesc" class="modal-desc">Introdu parola pentru a activa panoul de admin.</div>
+      </div>
+
+      <div class="field">
+        <input id="passInput" class="field-input" type="password" placeholder="Parola" autocomplete="current-password" />
+        <button id="passToggle" class="icon-btn" type="button" aria-label="Arată/ascunde parola">👁️</button>
+      </div>
+
+      <div id="passError" class="field-error" aria-live="polite"></div>
+
+      <div class="modal-actions">
+        <button id="passCancel" class="modal-btn ghost" type="button">Anulează</button>
+        <button id="passOk" class="modal-btn primary2" type="button">Intră</button>
+      </div>
+    </div>
+  </div>
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+
+  body{
+    background:#0f172a;
+    color:white;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+  body.modal-open{ overflow:hidden; }
+
+  .bg{
+    position:fixed;
+    inset:0;
+    background:
+      radial-gradient(circle at 20% 30%, #6366f1, transparent 40%),
+      radial-gradient(circle at 80% 70%, #8b5cf6, transparent 40%);
+    filter:blur(120px);
+    opacity:0.35;
+    z-index:-1;
+  }
+
+  .app{width:100%;max-width:1100px;padding:40px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;gap:12px;}
+
+  h1{font-size:30px;font-weight:700;line-height:1.1;}
+  h2{margin-bottom:20px;font-weight:600;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;}
+
+  .card{
+    background:rgba(255,255,255,0.05);
+    backdrop-filter:blur(20px);
+    padding:30px;
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,0.1);
+    box-shadow:0 20px 40px rgba(0,0,0,0.5);
+  }
+
+  .custom-select{
+    background:rgba(255,255,255,0.08);
+    padding:15px 18px;
+    border-radius:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    transition:0.3s;
+    user-select:none;
+    touch-action:manipulation;
+  }
+  .custom-select:hover{background:rgba(255,255,255,0.15);}
+
+  .arrow{
+    width:10px;height:10px;
+    border-right:2px solid white;
+    border-bottom:2px solid white;
+    transform:rotate(45deg);
+  }
+
+  .dropdown{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .28s ease;
+    margin-top:10px;
+    background:rgba(255,255,255,0.07);
+    border-radius:12px;
+  }
+  .dropdown.open{
+    max-height:min(70vh, 520px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .dropdown-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 12px;
+    gap:12px;
+    cursor:pointer;
+  }
+  .dropdown-item:hover{background:rgba(255,255,255,0.12);}
+
+  .dropdown-item span{
+    flex:1;
+    display:flex;
+    align-items:center;
+    min-height:40px;
+    padding-right:4px;
+  }
+
+  .delete-btn{
+    width:40px;
+    height:40px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:rgba(239,68,68,0.12);
+    border:1px solid rgba(239,68,68,0.35);
+    color:rgba(255,255,255,0.95);
+
+    cursor:pointer;
+    transition:transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    touch-action:manipulation;
+
+    box-shadow:
+      0 10px 22px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .delete-btn:hover{
+    background:rgba(239,68,68,0.18);
+    border-color: rgba(239,68,68,0.45);
+    transform:scale(1.06);
+    box-shadow:
+      0 14px 26px rgba(0,0,0,.45),
+      0 0 0 4px rgba(239,68,68,.14),
+      inset 0 1px 0 rgba(255,255,255,.10);
+  }
+  .delete-btn:active{transform:scale(.98);}
+  .delete-btn svg{width:18px;height:18px;display:block;}
+
+  .info-box{
+    margin-top:15px;
+    padding:12px;
+    border-radius:12px;
+    background:rgba(99,102,241,0.15);
+    font-size:14px;
+  }
+
+  input{
+    width:100%;
+    padding:14px;
+    margin-top:15px;
+    border-radius:12px;
+    border:none;
+    background:rgba(255,255,255,0.08);
+    color:white;
+    outline:none;
+  }
+
+  button{
+    width:100%;
+    padding:14px;
+    margin-top:15px;
+    border-radius:14px;
+    border:none;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.3s;
+    color:white;
+    touch-action:manipulation;
+  }
+
+  .primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);}
+  .primary:hover{transform:translateY(-3px);}
+  .danger{background:linear-gradient(135deg,#ef4444,#dc2626);}
+
+  .admin-btn{
+    width:auto;
+    background:rgba(255,255,255,0.1);
+    padding:8px 18px;
+    margin-top:0;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+
+  .total{margin-bottom:15px;font-size:18px;}
+
+  .progress{
+    width:100%;
+    height:14px;
+    background:rgba(255,255,255,0.1);
+    border-radius:20px;
+    margin-top:15px;
+    overflow:hidden;
+  }
+
+  #progressBar{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,#22c55e,#16a34a);
+    transition:0.5s;
+  }
+
+  li{
+    list-style:none;
+    padding:12px;
+    margin-bottom:8px;
+    border-radius:12px;
+    background:rgba(255,255,255,0.08);
+    font-size:14px;
+    line-height:1.35;
+  }
+
+  .admin-panel{display:none;}
+
+  @media (max-width: 980px){
+    body{align-items:flex-start;}
+    .app{padding:18px;}
+    .grid{grid-template-columns:1fr;gap:16px;}
+    .card{padding:16px;border-radius:18px;}
+    h1{font-size:24px;}
+    h2{margin-bottom:14px;}
+    .topbar{margin-bottom:16px;}
+  }
+
+  /* Modale */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(2,6,23,0.68);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    z-index:999;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    width:100%;
+    max-width:420px;
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:22px;
+    backdrop-filter:blur(18px);
+    box-shadow:0 30px 80px rgba(0,0,0,.55);
+    padding:18px;
+    transform:translateY(10px) scale(.98);
+    opacity:0;
+    transition:transform .18s ease, opacity .18s ease;
+  }
+  .modal-overlay.open .modal{
+    transform:translateY(0) scale(1);
+    opacity:1;
+  }
+  .modal-icon{
+    width:48px;height:48px;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    margin-bottom:10px;
+    font-size:22px;
+  }
+
+  #confirmOverlay .modal-icon{
+    background:rgba(239,68,68,0.12);
+    border:1px solid rgba(239,68,68,0.25);
+  }
+
+  .modal-title{font-weight:700;font-size:16px;margin-bottom:4px;}
+  .modal-desc{opacity:.9;font-size:14px;line-height:1.35;}
+  .modal-actions{display:flex;gap:10px;margin-top:14px;}
+  .modal-btn{flex:1;padding:12px 14px;margin-top:0;border-radius:16px;font-weight:700;}
+  .modal-btn.ghost{
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.14);
+  }
+  .modal-btn.danger2{background:linear-gradient(135deg,#ef4444,#dc2626);}
+  .modal-btn.primary2{background:linear-gradient(135deg,#6366f1,#8b5cf6);}
+
+  /* Password field */
+  .field{
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .field-input{
+    margin-top:0;
+    flex:1;
+    padding:14px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.08);
+    color:white;
+    outline:none;
+  }
+  .icon-btn{
+    width:46px;
+    height:46px;
+    margin-top:0;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.14);
+    font-size:18px;
+  }
+  .field-error{
+    min-height:18px;
+    margin-top:10px;
+    font-size:12px;
+    color:rgba(255,160,160,0.95);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+
+<script>
+  // ====== Config API ======
+  const API_BASE = "/.netlify/functions";
+  const ADMIN_TOKEN_KEY = "admin_token_v1";
+
+  function getToken(){ return localStorage.getItem(ADMIN_TOKEN_KEY); }
+  function setToken(t){ localStorage.setItem(ADMIN_TOKEN_KEY, t); }
+  function clearToken(){ localStorage.removeItem(ADMIN_TOKEN_KEY); }
+
+  // ====== Autosave zi (LOCAL) ======
+  const STORAGE_DAY = "ziCurenta_v1";
+
+  // ====== State ======
+  let esteAdmin = false;
+  let totalOre = 0;
+  let operatiiZi = [];
+  let operatiiSalvate = [];     // vine din DB (global)
+  let operatieSelectata = null; // ID-ul operației (string)
+
+  // ====== Confirm modal ======
+  let confirmResolve = null;
+  const confirmOverlay = () => document.getElementById("confirmOverlay");
+  const confirmIcon = () => document.getElementById("confirmIcon");
+  const confirmTitle = () => document.getElementById("confirmTitle");
+  const confirmDesc = () => document.getElementById("confirmDesc");
+  const confirmOk = () => document.getElementById("confirmOk");
+  const confirmCancel = () => document.getElementById("confirmCancel");
+
+  function openConfirm({ title="Confirmare", message="Ești sigur?", okText="Da", cancelText="Nu", icon="🗑️" } = {}){
+    confirmIcon().textContent = icon;
+    confirmTitle().textContent = title;
+    confirmDesc().textContent = message;
+    confirmOk().textContent = okText;
+    confirmCancel().textContent = cancelText;
+
+    confirmOverlay().classList.add("open");
+    confirmOverlay().setAttribute("aria-hidden","false");
+    document.body.classList.add("modal-open");
+
+    setTimeout(() => confirmOk().focus(), 0);
+
+    return new Promise((resolve)=>{ confirmResolve = resolve; });
+  }
+
+  function closeConfirm(result){
+    confirmOverlay().classList.remove("open");
+    confirmOverlay().setAttribute("aria-hidden","true");
+    document.body.classList.remove("modal-open");
+    if (confirmResolve) confirmResolve(result);
+    confirmResolve = null;
+  }
+
+  // ====== Password modal ======
+  let passResolve = null;
+  const passOverlay = () => document.getElementById("passOverlay");
+  const passInput = () => document.getElementById("passInput");
+  const passOk = () => document.getElementById("passOk");
+  const passCancel = () => document.getElementById("passCancel");
+  const passToggle = () => document.getElementById("passToggle");
+  const passError = () => document.getElementById("passError");
+
+  function openPasswordDialog({ errorText = "" } = {}){
+    passError().textContent = errorText;
+    passInput().value = "";
+    passInput().type = "password";
+    passToggle().textContent = "👁️";
+
+    passOverlay().classList.add("open");
+    passOverlay().setAttribute("aria-hidden","false");
+    document.body.classList.add("modal-open");
+
+    setTimeout(() => passInput().focus(), 0);
+
+    return new Promise((resolve)=>{ passResolve = resolve; });
+  }
+
+  function closePasswordDialog(valueOrNull){
+    passOverlay().classList.remove("open");
+    passOverlay().setAttribute("aria-hidden","true");
+    document.body.classList.remove("modal-open");
+    if (passResolve) passResolve(valueOrNull);
+    passResolve = null;
+  }
+
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // ====== API calls ======
+  async function incarcaOperatiiDinDB(){
+    const r = await fetch(`${API_BASE}/operatii`);
+    const j = await r.json();
+    operatiiSalvate = j.operatii || [];
+  }
+
+  async function apiAddOperatie(denumire, valoare){
+    const token = getToken();
+    if(!token) throw new Error("Nu ești logat ca admin.");
+
+    const r = await fetch(`${API_BASE}/operatii`, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ denumire, valoare })
+    });
+
+    const j = await r.json();
+    if(!r.ok){
+      if (r.status === 401){ clearToken(); esteAdmin=false; document.getElementById("adminPanel").style.display="none"; }
+      throw new Error(j.error || "Eroare la salvare.");
+    }
+    return j.operatie;
+  }
+
+  async function apiDeleteOperatie(id){
+    const token = getToken();
+    if(!token) throw new Error("Nu ești logat ca admin.");
+
+    const r = await fetch(`${API_BASE}/operatii?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const j = await r.json();
+    if(!r.ok){
+      if (r.status === 401){ clearToken(); esteAdmin=false; document.getElementById("adminPanel").style.display="none"; }
+      throw new Error(j.error || "Eroare la ștergere.");
+    }
+    return true;
+  }
+
+  async function apiAdminLogin(parola){
+    const r = await fetch(`${API_BASE}/admin-login`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ parola })
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "Autentificare eșuată.");
+    return j.token;
+  }
+
+  // ====== UI ======
+  function actualizeazaDropdown(){
+    const d = document.getElementById("dropdown");
+    d.innerHTML = "";
+
+    operatiiSalvate.forEach((op)=>{
+      const div = document.createElement("div");
+      div.classList.add("dropdown-item");
+
+      div.innerHTML = `
+        <span onclick="selecteazaOperatie('${op.id}')">
+          ${escapeHtml(op.denumire)} | ${Number(op.valoare).toFixed(3)}
+        </span>
+
+        ${esteAdmin ? `
+          <button type="button" class="delete-btn" aria-label="Șterge operația" onclick="stergeOperatie(event,'${op.id}')">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M9 3h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 6h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M6 7h12l-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7Z"
+                    stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M10 11v8M14 11v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        ` : ""}
+      `;
+
+      div.addEventListener("click",(e)=>e.stopPropagation());
+      d.appendChild(div);
+    });
+  }
+
+  function selecteazaOperatie(id){
+    operatieSelectata = id;
+
+    const op = operatiiSalvate.find(x => x.id === id);
+    if(!op) return;
+
+    document.getElementById("selectedText").textContent =
+      op.denumire + " | " + Number(op.valoare).toFixed(3);
+
+    document.getElementById("dropdown").classList.remove("open");
+
+    const bucOra = 60 / Number(op.valoare);
+    document.getElementById("infoOperatie").innerHTML =
+      `📊 Productivitate: <b>${bucOra.toFixed(0)}</b> bucăți / oră`;
+
+    salveazaZi();
+  }
+
+  async function salveazaOperatieNoua(){
+    const den = document.getElementById("denumire").value.trim();
+    const val = parseFloat(document.getElementById("valoare").value);
+    if(!den || !Number.isFinite(val) || val <= 0) return;
+
+    try{
+      await apiAddOperatie(den, val);
+      await incarcaOperatiiDinDB();
+      actualizeazaDropdown();
+      document.getElementById("denumire").value="";
+      document.getElementById("valoare").value="";
+    }catch(e){
+      alert(e.message || "Eroare.");
+    }
+  }
+
+  async function stergeOperatie(event, id){
+    event.stopPropagation();
+
+    const ok = await openConfirm({
+      title: "Ștergere operație",
+      message: "Ești sigur că vrei să ștergi această operație? Acțiunea nu poate fi anulată.",
+      okText: "Da, șterge",
+      cancelText: "Nu",
+      icon: "🗑️"
+    });
+    closeConfirm(ok);
+    if(!ok) return;
+
+    try{
+      await apiDeleteOperatie(id);
+
+      if (operatieSelectata === id){
+        operatieSelectata = null;
+        document.getElementById("selectedText").textContent = "Selectează operație";
+        document.getElementById("infoOperatie").innerHTML = "";
+      }
+
+      await incarcaOperatiiDinDB();
+      actualizeazaDropdown();
+      salveazaZi();
+    }catch(e){
+      alert(e.message || "Eroare.");
+    }
+  }
+
+  // ====== Ziua (LOCAL) ======
+  function adaugaOperatie(){
+    const piese = parseFloat(document.getElementById("piese").value);
+    if(!operatieSelectata || !Number.isFinite(piese) || piese <= 0) return;
+
+    const op = operatiiSalvate.find(x => x.id === operatieSelectata);
+    if(!op) return;
+
+    const norma = 60 / Number(op.valoare);
+    const ore = piese / norma;
+
+    totalOre += ore;
+
+    operatiiZi.push({
+      denumire: op.denumire,
+      valoare: Number(op.valoare),
+      piese,
+      ore,
+      bucOra: norma
+    });
+
+    actualizeazaAfisare();
+    document.getElementById("piese").value = "";
+    salveazaZi();
+  }
+
+  function actualizeazaAfisare(){
+    const lista = document.getElementById("listaOperatii");
+    lista.innerHTML = "";
+
+    operatiiZi.forEach((op,i)=>{
+      lista.innerHTML += `
+        <li>
+          ${i+1}. ${escapeHtml(op.denumire)} | ${Number(op.valoare).toFixed(3)}<br>
+          ${Number(op.piese)} piese → ${Number(op.ore).toFixed(2)} ore<br>
+          <small>${Number(op.bucOra).toFixed(0)} buc/oră</small>
+        </li>
+      `;
+    });
+
+    const procent = (totalOre / 7.5) * 100;
+
+    document.getElementById("progressBar").style.width = Math.min(procent,150) + "%";
+    document.getElementById("rezultatTotal").innerHTML =
+      `Total: <b>${totalOre.toFixed(2)}</b> ore<br>
+       Procent normă: <b>${procent.toFixed(1)}%</b>`;
+  }
+
+  async function resetZiConfirm(){
+    const ok = await openConfirm({
+      title: "Reset zi",
+      message: "Ești sigur că vrei să resetezi ziua? Se vor șterge toate operațiile adăugate azi (doar pe acest device).",
+      okText: "Da, resetează",
+      cancelText: "Nu",
+      icon: "⚠️"
+    });
+    closeConfirm(ok);
+    if(!ok) return;
+    resetZi();
+  }
+
+  function resetZi(){
+    totalOre = 0;
+    operatiiZi = [];
+    actualizeazaAfisare();
+    salveazaZi();
+  }
+
+  function salveazaZi(){
+    const payload = {
+      totalOre,
+      operatiiZi,
+      operatieSelectata,
+      selectedText: document.getElementById("selectedText")?.textContent || "Selectează operație",
+      infoHtml: document.getElementById("infoOperatie")?.innerHTML || ""
+    };
+    try{ localStorage.setItem(STORAGE_DAY, JSON.stringify(payload)); }catch(e){}
+  }
+
+  function incarcaZiSalvata(){
+    const raw = localStorage.getItem(STORAGE_DAY);
+    if(!raw) return;
+
+    try{
+      const payload = JSON.parse(raw);
+      totalOre = Number(payload.totalOre) || 0;
+      operatiiZi = Array.isArray(payload.operatiiZi) ? payload.operatiiZi : [];
+      operatieSelectata = payload.operatieSelectata || null;
+
+      if (payload.selectedText) document.getElementById("selectedText").textContent = payload.selectedText;
+      if (payload.infoHtml) document.getElementById("infoOperatie").innerHTML = payload.infoHtml;
+    }catch(e){}
+  }
+
+  // ====== Admin login (server-side) ======
+  async function loginAdmin(){
+    if (esteAdmin){
+      alert("Mod Admin este deja activ.");
+      return;
+    }
+
+    let errorText = "";
+    while(true){
+      const parola = await openPasswordDialog({ errorText });
+      if (parola === null){ closePasswordDialog(null); return; }
+
+      closePasswordDialog(parola);
+
+      try{
+        const token = await apiAdminLogin(parola);
+        setToken(token);
+
+        esteAdmin = true;
+        document.getElementById("adminPanel").style.display = "block";
+        actualizeazaDropdown();
+        return;
+      }catch(e){
+        errorText = e.message || "Parolă greșită.";
+      }
+    }
+  }
+
+  // ====== Wire events ======
+  window.addEventListener("load", async ()=>{
+    // confirm buttons
+    confirmOk().addEventListener("click", ()=>closeConfirm(true));
+    confirmCancel().addEventListener("click", ()=>closeConfirm(false));
+    confirmOverlay().addEventListener("click",(e)=>{
+      if (e.target === confirmOverlay()) closeConfirm(false);
+    });
+
+    // password buttons
+    passOk().addEventListener("click", ()=>closePasswordDialog(passInput().value));
+    passCancel().addEventListener("click", ()=>closePasswordDialog(null));
+    passToggle().addEventListener("click", ()=>{
+      const show = passInput().type === "password";
+      passInput().type = show ? "text" : "password";
+      passToggle().textContent = show ? "🙈" : "👁️";
+      passInput().focus();
+    });
+    passOverlay().addEventListener("click",(e)=>{
+      if (e.target === passOverlay()) closePasswordDialog(null);
+    });
+
+    document.addEventListener("keydown",(e)=>{
+      if (e.key === "Escape"){
+        if (passOverlay().classList.contains("open")) closePasswordDialog(null);
+        if (confirmOverlay().classList.contains("open")) closeConfirm(false);
+      }
+      if (e.key === "Enter" && passOverlay().classList.contains("open")){
+        e.preventDefault();
+        passOk().click();
+      }
+    });
+
+    // dropdown
+    document.getElementById("selectBox").addEventListener("click",(e)=>{
+      e.stopPropagation();
+      document.getElementById("dropdown").classList.toggle("open");
+    });
+    document.addEventListener("click", ()=>{
+      document.getElementById("dropdown").classList.remove("open");
+    });
+
+    // local day
+    incarcaZiSalvata();
+
+    // show admin panel if token exists (UX)
+    if (getToken()){
+      esteAdmin = true;
+      document.getElementById("adminPanel").style.display = "block";
+    }
+
+    // global operations
+    await incarcaOperatiiDinDB();
+
+    // if local selected op no longer exists
+    if (operatieSelectata && !operatiiSalvate.find(x => x.id === operatieSelectata)){
+      operatieSelectata = null;
+      document.getElementById("selectedText").textContent = "Selectează operație";
+      document.getElementById("infoOperatie").innerHTML = "";
+      salveazaZi();
+    }
+
+    actualizeazaDropdown();
+    actualizeazaAfisare();
+
+    window.addEventListener("beforeunload", salveazaZi);
+    document.addEventListener("visibilitychange", ()=>{
+      if (document.visibilityState === "hidden") salveazaZi();
+    });
+  });
+</script>
+</body>
+</html>
