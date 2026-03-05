@@ -539,16 +539,12 @@
     return true;
   }
 
-  async function apiAdminLogin(parola){
-    const r = await fetch(`${API_BASE}/admin-login`, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ parola })
-    });
-    const j = await r.json();
-    if(!r.ok) throw new Error(j.error || "Autentificare eșuată.");
-    return j.token;
-  }
+ async function apiAdminLogin(parola){
+  const r = await fetch(`${API_BASE}/admin-login`, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ parola })
+  });
 
   // ====== UI ======
   function actualizeazaDropdown(){
@@ -740,32 +736,30 @@
     }catch(e){}
   }
 
-  // ====== Admin login (server-side) ======
   async function loginAdmin(){
+  
     if (esteAdmin){
       alert("Mod Admin este deja activ.");
       return;
     }
-
-    let errorText = "";
-    while(true){
-      const parola = await openPasswordDialog({ errorText });
-      if (parola === null){ closePasswordDialog(null); return; }
-
-      closePasswordDialog(parola);
-
-      try{
-        const token = await apiAdminLogin(parola);
-        setToken(token);
-
-        esteAdmin = true;
-        document.getElementById("adminPanel").style.display = "block";
-        actualizeazaDropdown();
-        return;
-      }catch(e){
-        errorText = e.message || "Parolă greșită.";
-      }
+  
+    const parola = await openPasswordDialog();
+    if (parola === null) return;
+  
+    const parolaAdmin = "admin123";
+  
+    if(parola === parolaAdmin){
+  
+      esteAdmin = true;
+      document.getElementById("adminPanel").style.display = "block";
+      actualizeazaDropdown();
+  
+    }else{
+  
+      alert("Parola greșită");
+  
     }
+  
   }
 
   // ====== Wire events ======
